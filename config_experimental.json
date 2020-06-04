@@ -1,0 +1,19 @@
+{
+    "seed": 42,
+    "seq_type": "tm",
+    "seq_len" : 20,
+    "truncate_input": false,
+    "layer_dim" : 2,
+    "layer_num" : 15,
+    "steps" : 100,
+    "clip_norm": null,
+    "optimizer": {
+        "type": "Adam",
+        "betas": [
+            0.9,
+            0.999
+        ],
+        "eps": 1e-08
+    },
+    "verbose": true
+}
