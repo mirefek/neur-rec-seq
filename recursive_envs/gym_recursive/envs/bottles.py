@@ -5,6 +5,11 @@ from gym import error, spaces, utils
 from gym.utils import seeding
 import numpy as np
 
+LEFT = 0
+RIGHT = 1
+UP = 2
+DOWN = 3
+
 class Bottles(gym.Env):
     """
     Description:
@@ -276,30 +281,68 @@ class Bottles(gym.Env):
 
     def available_actions(self):
         if self.bottles[self.platter] < 2:
-            if self.platter > 0: yield 0 # platter LEFT
+            if self.platter > 0: yield LEFT # platter LEFT
             if self.platter < self.size and \
                (self.platter == 0 or self.bottles[self.platter-1] == 0):
-                yield 1   # platter RIGHT
+                yield RIGHT   # platter RIGHT
         else:
-            if self.balls[self.platter] == 1: yield 0 # ball LEFT
-            else: yield 1 # ball RIGHT
+            if self.balls[self.platter] == 1: yield LEFT # ball LEFT
+            else: yield RIGHT # ball RIGHT
 
         if self.platter == 0 or self.balls[self.platter-1] == 0:
             if self.balls[self.platter] == 0: min_pos = 1
             else: min_pos = 0
-            if self.bottles[self.platter] > min_pos: yield 2 # bottle UP
-            if self.bottles[self.platter] < 2: yield 3 # bottle DOWN
+            if self.bottles[self.platter] > min_pos: yield UP # bottle UP
+            if self.bottles[self.platter] < 2: yield DOWN # bottle DOWN
     def available_action_mask(self):
         res = np.zeros(4, dtype = bool)
         for i in self.available_actions(): res[i] = True
         return res
 
+    def expert_action(self):
+        if self.goal_accomplished(): return None
+
+        goal_bottle = self.goal_bottle
+        goal_pos = self.goal_pos
+        while True:
+            #print("({}) -> {}".format(goal_bottle, goal_pos))
+            if goal_pos == 0 and self.balls[goal_bottle] == 0:
+                if self.bottles[goal_bottle] == 2: return RIGHT
+                else: goal_pos = 2
+            if goal_bottle > 0 and self.balls[goal_bottle-1] == 1:
+                goal_bottle = goal_bottle-1
+                goal_pos = 2
+                if self.bottles[goal_bottle] == 2: return LEFT
+                continue
+            for i in reversed(range(goal_bottle-1)):
+                if self.bottles[i] > 0:
+                    goal_bottle = i
+                    goal_pos = 0
+                    break
+            else: break
+
+        if self.platter == goal_bottle:
+            if goal_pos > self.bottles[goal_bottle]: return DOWN
+            else: return UP
+        elif self.bottles[self.platter] == 2: return UP
+        elif self.platter < goal_bottle: return RIGHT
+        else: return LEFT
+
 if __name__ == "__main__":
     from pyglet.window import key
-    from pyglet import app
+    from pyglet import app, clock
 
     env = Bottles()
     env.reset()
+
+    def action_step(action):
+        if action is None: return
+        print("action", action)
+        print(env.step(action)[2])
+        env.render()
+
+    def sol_step(*args):
+        action_step(env.expert_action())
 
     def key_press(k, mod):
         global env
@@ -309,11 +352,10 @@ if __name__ == "__main__":
             key.UP    : 2,
             key.DOWN  : 3,
         }
-        if k in action_d:
-            action = action_d[k]
-            print("action", action)
-            print(env.step(action)[2])
-            env.render()
+        if k in action_d: action_step(env.action_b_to_i(*action_d[k]))
+        elif k == key.ENTER: 
+            sol_step()
+            clock.schedule_interval(sol_step, 0.1)
         elif k == key.R:
             env.reset()
             env.render()
@@ -321,11 +363,15 @@ if __name__ == "__main__":
             env.close()
             app.exit()
 
+    def key_release(k, mod):
+        if k == key.ENTER: clock.unschedule(sol_step)
+
     def on_draw(*args):
         env.viewer.render()
 
     env.render()
     env.viewer.window.on_key_press = key_press
+    env.viewer.window.on_key_release = key_release
     env.viewer.window.on_expose = on_draw
     env.viewer.window.on_draw = on_draw
     app.run()

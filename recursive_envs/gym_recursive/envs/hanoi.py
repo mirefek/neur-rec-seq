@@ -116,7 +116,6 @@ class Hanoi(gym.Env):
             # add discs, indexed from bottom to top
             self._discs_view_trans = []
             self._discs_view = []
-            print(self.goal_disc)
             for i in range(self.size):
                 disc_width = np.interp(i, [0,self.size-1], [disc_width_max, disc_width_min])
                 disc = rendering.FilledPolygon(rect_coor(disc_width, disc_height))
@@ -185,12 +184,35 @@ class Hanoi(gym.Env):
         for i in self.available_actions_i(): res[i] = True
         return res
 
+    def expert_action(self):
+        if self.goal_accomplished(): return None
+
+        start_bar = self.bars[self.goal_disc]
+        free_bar = 3 - start_bar - self.goal_bar
+        for disc in reversed(range(self.goal_disc)):
+            bar = self.bars[disc]
+            if bar != free_bar:
+                start_bar = bar
+                free_bar = 3 - bar - free_bar
+
+        goal_bar = 3 - free_bar - start_bar
+        return self.action_b_to_i(start_bar, goal_bar)
+
 if __name__ == "__main__":
     from pyglet.window import key
-    from pyglet import app
+    from pyglet import app, clock
 
     env = Hanoi()
     env.reset()
+
+    def action_step(action):
+        if action is None: return
+        print("{} -> {}".format(*env.action_i_to_b(action)))
+        print(env.step(action)[2])
+        env.render()
+
+    def sol_step(*args):
+        action_step(env.expert_action())
 
     def key_press(k, mod):
         global env
@@ -202,11 +224,10 @@ if __name__ == "__main__":
             key.S : (2,0),
             key.F : (0,2),
         }
-        if k in action_d:
-            b1, b2 = action_d[k]
-            print("{} -> {}".format(b1, b2))
-            print(env.step(env.action_b_to_i(b1, b2))[2])
-            env.render()
+        if k in action_d: action_step(env.action_b_to_i(*action_d[k]))
+        elif k == key.ENTER:
+            sol_step()
+            clock.schedule_interval(sol_step, 0.1)
         elif k == key.R:
             env.reset()
             env.render()
@@ -214,11 +235,15 @@ if __name__ == "__main__":
             env.close()
             app.exit()
 
+    def key_release(k, mod):
+        if k == key.ENTER: clock.unschedule(sol_step)
+
     def on_draw(*args):
         env.viewer.render()
 
     env.render()
     env.viewer.window.on_key_press = key_press
+    env.viewer.window.on_key_release = key_release
     env.viewer.window.on_expose = on_draw
     env.viewer.window.on_draw = on_draw
     app.run()
