@@ -322,7 +322,7 @@ if __name__ == "__main__":
             app.exit()
 
     def on_draw(*args):
-        env.render()
+        env.viewer.render()
 
     env.render()
     env.viewer.window.on_key_press = key_press
