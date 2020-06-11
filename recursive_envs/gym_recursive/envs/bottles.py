@@ -352,7 +352,7 @@ if __name__ == "__main__":
             key.UP    : 2,
             key.DOWN  : 3,
         }
-        if k in action_d: action_step(env.action_b_to_i(*action_d[k]))
+        if k in action_d: action_step(action_d[k])
         elif k == key.ENTER: 
             sol_step()
             clock.schedule_interval(sol_step, 0.1)
