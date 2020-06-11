@@ -10,5 +10,5 @@ register(
     id='Recursive-Bottles-v0',
     entry_point='gym_recursive.envs:Bottles',
     kwargs={'size' : 7},
-    max_episode_steps=400,
+    max_episode_steps=500,
 )

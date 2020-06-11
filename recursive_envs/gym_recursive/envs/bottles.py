@@ -282,7 +282,7 @@ class Bottles(gym.Env):
     def available_actions(self):
         if self.bottles[self.platter] < 2:
             if self.platter > 0: yield LEFT # platter LEFT
-            if self.platter < self.size and \
+            if self.platter < self.size-1 and \
                (self.platter == 0 or self.bottles[self.platter-1] == 0):
                 yield RIGHT   # platter RIGHT
         else:
@@ -355,7 +355,7 @@ if __name__ == "__main__":
         if k in action_d: action_step(action_d[k])
         elif k == key.ENTER: 
             sol_step()
-            clock.schedule_interval(sol_step, 0.1)
+            clock.schedule_interval(sol_step, 0.05)
         elif k == key.R:
             env.reset()
             env.render()
