@@ -2,6 +2,7 @@ import random
 import numpy as np
 import torch
 from torch import nn
+import sys
 import os
 
 from model_simp import LeveledRNN
@@ -73,6 +74,7 @@ def eval_model(model, eval_seqs, batch_size, epoch):
         indicators = model.get_loss_acc_multi(batch)
         stats.append([x.item() for x in indicators])
     print("Evaluation {} : {}".format(epoch, stats_str(stats)))
+    sys.stdout.flush()
 
 def train(model, train_seqs, eval_seqs, batch_size, epochs,
           ac_loss_c = 1, save_dir = None, save_each = 10):
@@ -98,9 +100,11 @@ def train(model, train_seqs, eval_seqs, batch_size, epochs,
             stats.append([x.item() for x in indicators])
             print("Training {}, {} : {}".format(
                 epoch, min(i+batch_size, len(train_seqs)), stats_str(stats)))
+            sys.stdout.flush()
             stats = []
         if stats:
             print("Training {}, {} : {}".format(epoch, len(train_seqs), stats_str(stats)))
+            sys.stdout.flush()
 
         if save_dir is not None and (epoch+1) % save_each == 0:
             fname = os.path.join(save_dir, "epoch{}".format(epoch+1))
