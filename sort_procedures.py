@@ -1,11 +1,17 @@
 class ArrayEnv:
-    def __init__(self, data):
+    def __init__(self, data, emulate_swap = False):
         self.start_data = list(data)
+        self.emulate_swap = emulate_swap
         self.reset()
     def swap(self, i0, i1):
-        self.instructions.append((0, (i0, i1)))
-        self.data[i0], self.data[i1] = self.data[i1], self.data[i0]
-        return None
+        if self.emulate_swap: # assumes i0 != i1, i0, i1 are non-empty
+            self.stack.push(i0)
+            self.stack.push(i1)
+            self.stack.pop(i0)
+            self.stack.pop(i1)
+        else:
+            self.instructions.append((0, (i0, i1)))
+            self.data[i0], self.data[i1] = self.data[i1], self.data[i0]
     def less_than(self, i0, i1):
         self.instructions.append((1, (i0, i1)))
         x,y = self.data[i0], self.data[i1]
@@ -28,7 +34,7 @@ class ArrayEnv:
         t, args = instruction
         return self.instr_by_index(t)(*args)
     def reset(self):
-        self.data = list(data)
+        self.data = list(self.start_data)
         self.instructions = []
         self.stack = []
     def __len__(self):
