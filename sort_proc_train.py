@@ -2,6 +2,7 @@ import random
 import numpy as np
 import torch
 from torch import nn
+import os
 
 from model_simp import LeveledRNN
 from sort_proc_nn import *
