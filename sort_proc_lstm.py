@@ -1,30 +1,33 @@
 import random
 import numpy as np
+import os
+import sys
 import torch
 from torch import nn
-import sys
-import os
-
-from model_simp import LeveledRNN
-from sort_proc_nn import *
-from sort_procedures import ArrayEnv, quick_sort, merge_sort
+from torch.nn.utils.rnn import pack_sequence
+import sort_procedures
+from sort_proc_nn import InstrEmbedding, InstrHead
 
 class Net(nn.Module):
-    def __init__(self, dim_in, state_dims, dim_out, array_size, truncate_inputs):
+    def __init__(self, dim_in, dim_out, array_size, rnn):
         nn.Module.__init__(self)
 
+        rnn_args = dict(rnn)
+        rnn_type = rnn_args.pop('type')
         self.emb = InstrEmbedding(dim_in, array_size)
-        self.rnn = LeveledRNN(dim_in, dim_out, state_dims, truncate_inputs)
+        self.rnn = getattr(nn, rnn_type)(dim_in, dim_out, **rnn_args)
         self.head = InstrHead(dim_out, array_size)
 
     def get_loss_acc_single(self, seq):
-        seq_in = [None]+list(seq)
+        seq_in = [None]+list(seq[:-1])
         seq_target = [x[0] for x in seq]
         seq_emb = torch.stack([
             self.emb(instr, result)
             for instr, result in seq
         ])
-        seq_out, active_loss = self.rnn(seq_emb)
+        rnn_in = torch.unsqueeze(seq_emb, 1)
+        rnn_out, _ = self.rnn(rnn_in)
+        seq_out = torch.squeeze(rnn_out, 1)
         seq_loss, seq_acc = [], []
         for x,target in zip(seq_out, seq_target):
             loss, correct = self.head.get_loss_acc(x, target)
@@ -32,7 +35,7 @@ class Net(nn.Module):
             seq_acc.append(correct.to(torch.float))
         seq_loss = torch.mean(torch.stack(seq_loss))
         seq_acc = torch.mean(torch.stack(seq_acc))
-        return seq_loss, active_loss, seq_acc
+        return seq_loss, seq_acc
 
     def get_loss_acc_multi(self, seqs): # seq_loss, active_loss, seq_acc
         indicators = zip(*(
@@ -46,7 +49,7 @@ class Net(nn.Module):
         return indicators
 
 def generate_seq(array_size, algorithm):
-    env = ArrayEnv(np.random.permutation(array_size))
+    env = sort_procedures.ArrayEnv(np.random.permutation(array_size))
     algorithm(env)
     instructions = env.instructions
     env.reset()
@@ -64,9 +67,10 @@ def generate_seqs(number, array_size, algorithm):
 
 def stats_str(stats):
     indicators = list(map(np.mean, zip(*stats)))
-    return "seq_loss {}, active_loss {}, accuracy {}".format(*indicators)
+    return "seq_loss {}, accuracy {}".format(*indicators)
 
 def eval_model(model, eval_seqs, batch_size, epoch):
+    batch_size = np.gcd(len(eval_seqs), batch_size)
     stats = []
     model.eval()
     for i in range(0,len(eval_seqs),batch_size): # evaluation
@@ -77,9 +81,15 @@ def eval_model(model, eval_seqs, batch_size, epoch):
     sys.stdout.flush()
 
 def train(model, train_seqs, eval_seqs, batch_size, epochs,
-          ac_loss_c = 1, save_dir = None, save_each = 10, load_epoch = None):
+          optimizer = {'type' : 'Adam'},
+          save_dir = None, save_each = 10, load_epoch = None):
 
-    optimizer = torch.optim.Adam(model.parameters())
+    assert(len(train_seqs) % batch_size == 0)
+    parameters = tuple(model.parameters())
+    optimizer_args = dict(optimizer)
+    optimizer_type = optimizer_args.pop('type')
+    optimizer = getattr(torch.optim, optimizer_type)(parameters, **optimizer_args)
+
     if load_epoch is not None:
         assert(save_dir is not None)
         print("loading epoch {}".format(load_epoch))
@@ -102,8 +112,7 @@ def train(model, train_seqs, eval_seqs, batch_size, epochs,
             batch = train_seqs[i:i+batch_size]
             optimizer.zero_grad()
             indicators = tuple(model.get_loss_acc_multi(batch))
-            seq_loss, active_loss, seq_acc = indicators
-            loss = seq_loss + ac_loss_c*active_loss
+            loss, seq_acc = indicators
             loss.backward()
             optimizer.step()
             stats.append([x.item() for x in indicators])
@@ -122,27 +131,47 @@ def train(model, train_seqs, eval_seqs, batch_size, epochs,
 
         eval_model(model, eval_seqs, batch_size, epoch+1)
 
-if __name__ == "__main__":
-    seed = 42
-    array_size = 20
-    dim_in = 20
-    state_dims = [10]*10
-    dim_out = 20
-    truncate_inputs = False
-    train_num = 200
-    eval_num = 20
-    batch_size = 10
-    epochs = 500
-    ac_loss_c = 1
-    algorithm = quick_sort
-
-    random.seed(seed)
+def generate_data(seed, array_size, train_num, eval_num, algorithm):
     np.random.seed(seed)
-    torch.manual_seed(seed)
-
-    model = Net(dim_in, state_dims, dim_out, array_size, truncate_inputs)
+    algorithm = getattr(sort_procedures, algorithm)
     train_seqs = generate_seqs(train_num, array_size, algorithm)
     eval_seqs = generate_seqs(eval_num, array_size, algorithm)
+    return train_seqs, eval_seqs
 
-    train(model, train_seqs, eval_seqs, batch_size, epochs, ac_loss_c,
-          save_dir = "quicksort_exp1_w")
+if __name__ == "__main__":
+    config = {
+        'main_seed' : 42,
+        'array_size' : 20,
+        'data' : {
+            'seed' : 42,
+            'train_num' : 200,
+            'eval_num' : 20,
+            'algorithm' : "quick_sort",
+        },
+        'model' : {
+            'dim_in' : 20,
+            'dim_out' : 100,
+            'rnn' : {
+                'type' : 'LSTM',
+                'num_layers' : 1,
+            },
+        },
+        'train' : {
+            'batch_size' : 10,
+            'epochs' : 10,
+            'optimizer' : {
+                'type' : 'Adam'
+            },
+        },
+    }
+
+    array_size = config['array_size']
+    train_seqs, eval_seqs = generate_data(array_size = array_size, **config['data'])
+
+    seed = config['main_seed']
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)    
+    model = Net(array_size = array_size, **config['model'])
+
+    train(model, train_seqs, eval_seqs, **config['train'])
