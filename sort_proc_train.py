@@ -77,15 +77,24 @@ def eval_model(model, eval_seqs, batch_size, epoch):
     sys.stdout.flush()
 
 def train(model, train_seqs, eval_seqs, batch_size, epochs,
-          ac_loss_c = 1, save_dir = None, save_each = 10):
+          ac_loss_c = 1, save_dir = None, save_each = 10, load_epoch = None):
+
+    optimizer = torch.optim.Adam(model.parameters())
+    if load_epoch is not None:
+        assert(save_dir is not None)
+        print("loading epoch {}".format(load_epoch))
+        sys.stdout.flush()
+        fname = os.path.join(save_dir, "epoch{}".format(load_epoch))
+        model.load_state_dict(torch.load(fname))
+        optimizer.load_state_dict(torch.load(fname+"_optimizer"))
+        start_epoch = load_epoch
+    else: start_epoch = 0
 
     eval_model(model, eval_seqs, batch_size, 0)
-    
-    optimizer = torch.optim.Adam(model.parameters())
 
     if save_dir is not None: os.makedirs(save_dir, exist_ok=True)
     train_seqs = list(train_seqs)
-    for epoch in range(epochs):
+    for epoch in range(start_epoch, epochs):
         random.shuffle(train_seqs)
         stats = []
         model.train()
@@ -123,7 +132,7 @@ if __name__ == "__main__":
     train_num = 200
     eval_num = 20
     batch_size = 10
-    epochs = 200
+    epochs = 500
     ac_loss_c = 1
     algorithm = quick_sort
 
@@ -135,4 +144,5 @@ if __name__ == "__main__":
     train_seqs = generate_seqs(train_num, array_size, algorithm)
     eval_seqs = generate_seqs(eval_num, array_size, algorithm)
 
-    train(model, train_seqs, eval_seqs, batch_size, epochs, ac_loss_c, save_dir = "quicksort_exp1_w")
+    train(model, train_seqs, eval_seqs, batch_size, epochs, ac_loss_c,
+          save_dir = "quicksort_exp1_w")
