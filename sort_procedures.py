@@ -1,3 +1,5 @@
+import numpy as np
+
 class ArrayEnv:
     def __init__(self, data, emulate_swap = False):
         self.start_data = list(data)
@@ -37,6 +39,10 @@ class ArrayEnv:
         self.data = list(self.start_data)
         self.instructions = []
         self.stack = []
+
+    def is_sorted(self):
+        return (np.diff(self.data) >= 0).all()
+
     def __len__(self):
         return len(self.data)
     def __str__(self):
