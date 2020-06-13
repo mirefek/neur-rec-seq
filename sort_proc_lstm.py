@@ -158,7 +158,7 @@ if __name__ == "__main__":
         },
         'train' : {
             'batch_size' : 10,
-            'epochs' : 10,
+            'epochs' : 500,
             'optimizer' : {
                 'type' : 'Adam'
             },
