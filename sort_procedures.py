@@ -94,8 +94,8 @@ if __name__ == "__main__":
     data = [random.randint(0,999) for _ in range(20)]
     a = ArrayEnv(data)
     print(a)
-    #quick_sort(a)
-    merge_sort(a)
+    quick_sort(a)
+    #merge_sort(a)
     instructions = a.instructions
     print(a)
     a.reset()

@@ -41,7 +41,7 @@ class Hanoi(gym.Env):
     """
     metadata = {
         'render.modes': ['human', 'rgb_array'],
-        'video.frames_per_second': 3
+        'video.frames_per_second': 10
     }
 
     def __init__(self, size = 8):
@@ -170,6 +170,8 @@ class Hanoi(gym.Env):
         return i // 2, ((i + 3) % 6) // 2
     def action_b_to_i(self, b1, b2):
         return b1*2 + (b2-b1-1)%3
+    def action_to_str(self, i):
+        return "{} -> {}".format(*self.action_i_to_b(i))
 
     def available_actions_b(self):
         b1 = self.bars[0]
@@ -199,51 +201,15 @@ class Hanoi(gym.Env):
         return self.action_b_to_i(start_bar, goal_bar)
 
 if __name__ == "__main__":
+
+    from interactive import run_interactive
     from pyglet.window import key
-    from pyglet import app, clock
-
-    env = Hanoi()
-    env.reset()
-
-    def action_step(action):
-        if action is None: return
-        print("{} -> {}".format(*env.action_i_to_b(action)))
-        print(env.step(action)[2])
-        env.render()
-
-    def sol_step(*args):
-        action_step(env.expert_action())
-
-    def key_press(k, mod):
-        global env
-        action_d = {
-            key.Z : (1,0),
-            key.X : (0,1),
-            key.C : (2,1),
-            key.V : (1,2),
-            key.S : (2,0),
-            key.F : (0,2),
-        }
-        if k in action_d: action_step(env.action_b_to_i(*action_d[k]))
-        elif k == key.ENTER:
-            sol_step()
-            clock.schedule_interval(sol_step, 0.1)
-        elif k == key.R:
-            env.reset()
-            env.render()
-        elif k == key.ESCAPE:
-            env.close()
-            app.exit()
-
-    def key_release(k, mod):
-        if k == key.ENTER: clock.unschedule(sol_step)
-
-    def on_draw(*args):
-        env.viewer.render()
-
-    env.render()
-    env.viewer.window.on_key_press = key_press
-    env.viewer.window.on_key_release = key_release
-    env.viewer.window.on_expose = on_draw
-    env.viewer.window.on_draw = on_draw
-    app.run()
+    key_to_action = {
+        key.Z : 3,
+        key.X : 0,
+        key.C : 5,
+        key.V : 2,
+        key.S : 4,
+        key.F : 1,
+    }
+    run_interactive(Hanoi(), key_to_action)

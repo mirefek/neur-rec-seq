@@ -50,7 +50,7 @@ class Bottles(gym.Env):
     """
     metadata = {
         'render.modes': ['human', 'rgb_array'],
-        'video.frames_per_second': 3
+        'video.frames_per_second': 20
     }
     def __init__(self, size = 7):
         self.size = size
@@ -329,49 +329,12 @@ class Bottles(gym.Env):
         else: return LEFT
 
 if __name__ == "__main__":
+    from interactive import run_interactive
     from pyglet.window import key
-    from pyglet import app, clock
-
-    env = Bottles()
-    env.reset()
-
-    def action_step(action):
-        if action is None: return
-        print("action", action)
-        print(env.step(action)[2])
-        env.render()
-
-    def sol_step(*args):
-        action_step(env.expert_action())
-
-    def key_press(k, mod):
-        global env
-        action_d = {
-            key.LEFT  : 0,
-            key.RIGHT : 1,
-            key.UP    : 2,
-            key.DOWN  : 3,
-        }
-        if k in action_d: action_step(action_d[k])
-        elif k == key.ENTER: 
-            sol_step()
-            clock.schedule_interval(sol_step, 0.05)
-        elif k == key.R:
-            env.reset()
-            env.render()
-        elif k == key.ESCAPE:
-            env.close()
-            app.exit()
-
-    def key_release(k, mod):
-        if k == key.ENTER: clock.unschedule(sol_step)
-
-    def on_draw(*args):
-        env.viewer.render()
-
-    env.render()
-    env.viewer.window.on_key_press = key_press
-    env.viewer.window.on_key_release = key_release
-    env.viewer.window.on_expose = on_draw
-    env.viewer.window.on_draw = on_draw
-    app.run()
+    key_to_action = {
+        key.LEFT  : 0,
+        key.RIGHT : 1,
+        key.UP    : 2,
+        key.DOWN  : 3,
+    }
+    run_interactive(Bottles(), key_to_action)

@@ -63,16 +63,16 @@ def generate_seqs(number, array_size, algorithm):
     ]
 
 def stats_str(stats):
-    indicators = list(map(np.mean, zip(*stats)))
-    return "seq_loss {}, active_loss {}, accuracy {}".format(*indicators)
+    metrics = list(map(np.mean, zip(*stats)))
+    return "seq_loss {}, active_loss {}, accuracy {}".format(*metrics)
 
 def eval_model(model, eval_seqs, batch_size, epoch):
     stats = []
     model.eval()
     for i in range(0,len(eval_seqs),batch_size): # evaluation
         batch = eval_seqs[i:i+batch_size]
-        indicators = model.get_loss_acc_multi(batch)
-        stats.append([x.item() for x in indicators])
+        metrics = model.get_loss_acc_multi(batch)
+        stats.append([x.item() for x in metrics])
     print("Evaluation {} : {}".format(epoch, stats_str(stats)))
     sys.stdout.flush()
 
@@ -101,12 +101,12 @@ def train(model, train_seqs, eval_seqs, batch_size, epochs,
         for i in range(0,len(train_seqs),batch_size): # training
             batch = train_seqs[i:i+batch_size]
             optimizer.zero_grad()
-            indicators = tuple(model.get_loss_acc_multi(batch))
-            seq_loss, active_loss, seq_acc = indicators
+            metrics = tuple(model.get_loss_acc_multi(batch))
+            seq_loss, active_loss, seq_acc = metrics
             loss = seq_loss + ac_loss_c*active_loss
             loss.backward()
             optimizer.step()
-            stats.append([x.item() for x in indicators])
+            stats.append([x.item() for x in metrics])
             print("Training {}, {} : {}".format(
                 epoch, min(i+batch_size, len(train_seqs)), stats_str(stats)))
             sys.stdout.flush()
@@ -143,6 +143,8 @@ if __name__ == "__main__":
     model = Net(dim_in, state_dims, dim_out, array_size, truncate_inputs)
     train_seqs = generate_seqs(train_num, array_size, algorithm)
     eval_seqs = generate_seqs(eval_num, array_size, algorithm)
+    print(list(map(len, eval_seqs)))
+    exit()
 
     train(model, train_seqs, eval_seqs, batch_size, epochs, ac_loss_c,
           save_dir = "quicksort_exp1_w")

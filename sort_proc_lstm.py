@@ -38,15 +38,15 @@ class Net(nn.Module):
         return seq_loss, seq_acc
 
     def get_loss_acc_multi(self, seqs): # seq_loss, active_loss, seq_acc
-        indicators = zip(*(
+        metrics = zip(*(
             self.get_loss_acc_single(seq)
             for seq in seqs
         ))
-        indicators = (
-            torch.mean(torch.stack(list(indicator)))
-            for indicator in indicators
+        metrics = (
+            torch.mean(torch.stack(list(metric)))
+            for metric in metrics
         )
-        return indicators
+        return metrics
 
 def generate_seq(array_size, algorithm):
     env = sort_procedures.ArrayEnv(np.random.permutation(array_size))
@@ -66,8 +66,8 @@ def generate_seqs(number, array_size, algorithm):
     ]
 
 def stats_str(stats):
-    indicators = list(map(np.mean, zip(*stats)))
-    return "seq_loss {}, accuracy {}".format(*indicators)
+    metrics = list(map(np.mean, zip(*stats)))
+    return "seq_loss {}, accuracy {}".format(*metrics)
 
 def eval_model(model, eval_seqs, batch_size, epoch):
     batch_size = np.gcd(len(eval_seqs), batch_size)
@@ -75,14 +75,14 @@ def eval_model(model, eval_seqs, batch_size, epoch):
     model.eval()
     for i in range(0,len(eval_seqs),batch_size): # evaluation
         batch = eval_seqs[i:i+batch_size]
-        indicators = model.get_loss_acc_multi(batch)
-        stats.append([x.item() for x in indicators])
+        metrics = model.get_loss_acc_multi(batch)
+        stats.append([x.item() for x in metrics])
     print("Evaluation {} : {}".format(epoch, stats_str(stats)))
     sys.stdout.flush()
 
 def train(model, train_seqs, eval_seqs, batch_size, epochs,
-          optimizer = {'type' : 'Adam'},
-          save_dir = None, save_each = 10, load_epoch = None):
+          optimizer = {'type' : 'Adam'}, train_print_each = 1,
+          save_dir = None, save_each = 100, load_epoch = None):
 
     assert(len(train_seqs) % batch_size == 0)
     parameters = tuple(model.parameters())
@@ -111,15 +111,16 @@ def train(model, train_seqs, eval_seqs, batch_size, epochs,
         for i in range(0,len(train_seqs),batch_size): # training
             batch = train_seqs[i:i+batch_size]
             optimizer.zero_grad()
-            indicators = tuple(model.get_loss_acc_multi(batch))
-            loss, seq_acc = indicators
+            metrics = tuple(model.get_loss_acc_multi(batch))
+            loss, seq_acc = metrics
             loss.backward()
             optimizer.step()
-            stats.append([x.item() for x in indicators])
-            print("Training {}, {} : {}".format(
-                epoch, min(i+batch_size, len(train_seqs)), stats_str(stats)))
-            sys.stdout.flush()
-            stats = []
+            stats.append([x.item() for x in metrics])
+            if (i//batch_size + 1) % train_print_each == 0:
+                print("Training {}, {} : {}".format(
+                    epoch, min(i+batch_size, len(train_seqs)), stats_str(stats)))
+                sys.stdout.flush()
+                stats = []
         if stats:
             print("Training {}, {} : {}".format(epoch, len(train_seqs), stats_str(stats)))
             sys.stdout.flush()
