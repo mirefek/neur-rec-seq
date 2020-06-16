@@ -9,23 +9,30 @@ import numpy as np
 class Climbers(gym.Env):
     """
     Description:
-        TODO
+        Two climbers on the opposite side of a mointain range
+        want to meet but their altitude must be equal.
     Observation:
         Type: {
-           'terrain' : Box(0, 1, self.terrain_size),
-           'goal' : MultiDiscrete([2*size+1, 2*size+1]),
+           'terrain' : Box(0, 1, 2*num_peaks+1),
+           'climbers' : MultiDiscrete([2*num_peaks+1, 2*num_peaks+1]),
         }
-        TODO
+        'terrain' is fixed during a single game describing
+            the consecutive heights of peaks / valleys
+            with zeroes on both ends
+        'climbers' describe the positions of the two climbers.
+            climber on a position 2*x is at the valley / peak x
+            climber on an odd position is on the appropriate hillside
     Actions:
         Type: Discrete(2)
         0 = LEFT
         1 = RIGHT
         the controlled climber is the one at a peak / valley
     Reward and termination:
-        Once the goal is accomplished, the game terminates with reward 1,
+        Once the climbers meet, the game terminates with reward 1,
         otherwise, the reward is zero.
     Starting State:
-        TODO
+        The mountain range is randomly generated alternating valleys / peaks.
+        The climbers start at the opposite sides of the mountain range.
     """
     metadata = {
         'render.modes': ['human', 'rgb_array'],
