@@ -9,8 +9,9 @@ import numpy as np
 class Climbers(gym.Env):
     """
     Description:
-        Two climbers on the opposite side of a mointain range
-        want to meet but their altitude must be equal.
+        Two climbers on the opposite sides of a mountain range
+        want to meet each other but they must keep their altitudes
+        equal the entire time.
     Observation:
         Type: {
            'terrain' : Box(0, 1, 2*num_peaks+1),
