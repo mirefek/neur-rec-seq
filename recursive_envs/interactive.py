@@ -1,7 +1,8 @@
 from pyglet.window import key
 from pyglet import app, clock
 
-def run_interactive(env, key_to_action):
+def run_interactive(env, key_to_action, seed = None):
+    if seed is not None: env.seed(seed)
     env.reset()
 
     if hasattr(env, "action_to_str"):
