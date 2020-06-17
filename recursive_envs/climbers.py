@@ -110,6 +110,7 @@ class Climbers(gym.Env):
         h_offset = 30
         v_offset = 30
         climber_radius = 5
+        active_climber_radius = 8
         mountain_color = (0.5, 0.5, 0.5)
         climber_color = (0, 0, 0)
 
@@ -149,7 +150,7 @@ class Climbers(gym.Env):
             # add climbers
             self._climbers_trans = []
             for i in range(2):
-                climber = rendering.make_circle(radius = 5, res = 10)
+                climber = rendering.make_circle(radius = 1, res = 10)
                 trans = rendering.Transform()
                 self._climbers_trans.append(trans)
                 climber.add_attr(trans)
@@ -171,6 +172,8 @@ class Climbers(gym.Env):
                 y1 = self.terrain[(x+1)//2]
                 if y0 < y1: x += np.interp(y, [y0, y1], [-1, +1])
                 else: x += np.interp(-y, [-y0, -y1], [-1, +1])
+                trans.set_scale(climber_radius, climber_radius)
+            else: trans.set_scale(active_climber_radius, active_climber_radius)
             trans.set_translation(h_offset + x*h_scale/2, v_offset + y*v_scale)
 
         return self.viewer.render(return_rgb_array = mode == 'rgb_array')
