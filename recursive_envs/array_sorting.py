@@ -66,6 +66,8 @@ class ArraySorting(gym.Env):
         self.last_action = 0, self.min_index, self.max_index
         self.expert_reset()
 
+        return self.get_state()
+
     def step(self, action):
         action = np.array(action)
         err_msg = "%r (%s) invalid" % (action, type(action))
@@ -91,6 +93,12 @@ class ArraySorting(gym.Env):
         reward = float(done)
         return self.get_state(), reward, done, {}
 
+    
+    def close(self):
+        if self.viewer:
+            self.viewer.close()
+            self.viewer = None
+    
     def goal_accomplished(self):
         return self.checked.all() and\
             (np.diff(self.a[self.min_index : self.max_index+1]) == 1).all()
